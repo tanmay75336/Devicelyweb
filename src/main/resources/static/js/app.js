@@ -588,11 +588,21 @@ function buildIframe(url, width, height, vpId) {
   iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox');
   iframe.setAttribute('loading', 'lazy');
 
+  const embeddedUrl = getEmbedUrl(url);
+  const knownBlock = getKnownEmbeddingBlockReason(url);
   const startTime = performance.now();
   P.loadingOverlay.classList.add('show');
 
   iframe.onload = () => {
+    if (knownBlock || looksLikeBlockedIframe(iframe, embeddedUrl)) {
+      P.loadingOverlay.classList.remove('show');
+      showFrameBlockedOverlay(url, knownBlock);
+      P.statusLoadTime.style.display = 'none';
+      return;
+    }
+
     P.loadingOverlay.classList.remove('show');
+    hideFrameBlockedOverlay();
     const elapsed = Math.round(performance.now() - startTime);
     previewState.loadTimes[vpId] = elapsed;
     P.statusLoadTime.style.display = 'flex';
@@ -600,9 +610,11 @@ function buildIframe(url, width, height, vpId) {
   };
   iframe.onerror = () => {
     P.loadingOverlay.classList.remove('show');
+    showFrameBlockedOverlay(url, knownBlock);
+    P.statusLoadTime.style.display = 'none';
   };
 
-  iframe.src = url;
+  iframe.src = embeddedUrl;
   return iframe;
 }
 
@@ -646,18 +658,53 @@ function showMultiViewport() {
     iframe.style.cssText = `display:block; width:${vp.w}px; height:${vp.h}px; border:none; background:white;`;
     iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox');
     iframe.setAttribute('loading', 'lazy');
-    iframe.src = previewState.url;
+    const embeddedUrl = getEmbedUrl(previewState.url);
+    const knownBlock = getKnownEmbeddingBlockReason(previewState.url);
+    iframe.src = embeddedUrl;
 
     const badge = document.createElement('div');
     badge.className = 'mvp-pass-badge';
     badge.innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Pass`;
+    const failBadge = document.createElement('div');
+    failBadge.className = 'mvp-fail-badge';
+    failBadge.innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Blocked`;
+    failBadge.style.display = 'none';
 
-    iframe.onload = () => { badge.style.display = 'flex'; };
+    const blockedOverlay = document.createElement('div');
+    blockedOverlay.className = 'mvp-blocked-overlay';
+    blockedOverlay.innerHTML = `
+      <p class="mvp-blocked-title">Embedding blocked</p>
+      <p class="mvp-blocked-text">${escapeHtml(knownBlock || 'This site prevents rendering inside iframes.')}</p>
+      <button type="button" class="mvp-blocked-btn">Open in new tab</button>
+    `;
+    blockedOverlay.style.display = 'none';
+    blockedOverlay.querySelector('.mvp-blocked-btn').addEventListener('click', () => {
+      window.open(previewState.url, '_blank', 'noopener,noreferrer');
+    });
+
+    iframe.onload = () => {
+      if (knownBlock || looksLikeBlockedIframe(iframe, embeddedUrl)) {
+        badge.style.display = 'none';
+        failBadge.style.display = 'flex';
+        blockedOverlay.style.display = 'flex';
+        return;
+      }
+      blockedOverlay.style.display = 'none';
+      failBadge.style.display = 'none';
+      badge.style.display = 'flex';
+    };
+    iframe.onerror = () => {
+      badge.style.display = 'none';
+      failBadge.style.display = 'flex';
+      blockedOverlay.style.display = 'flex';
+    };
     badge.style.display = 'none';
 
     inner.appendChild(iframe);
     shellWrap.appendChild(inner);
     shellWrap.appendChild(badge);
+    shellWrap.appendChild(failBadge);
+    shellWrap.appendChild(blockedOverlay);
     panel.appendChild(shellWrap);
     P.multiLayout.appendChild(panel);
   });
@@ -767,6 +814,95 @@ function getDeviceIconSmall(device) {
     macbook14: `<svg width="11" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M0 21h24"/></svg>`,
   };
   return icons[device] || icons.desktop;
+}
+
+function getEmbedUrl(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+
+    if (host === 'youtu.be') {
+      const id = (u.pathname || '').replace('/', '').trim();
+      return id ? `https://www.youtube.com/embed/${id}` : url;
+    }
+
+    if (host.endsWith('youtube.com')) {
+      if (u.pathname === '/watch') {
+        const id = u.searchParams.get('v');
+        return id ? `https://www.youtube.com/embed/${id}` : url;
+      }
+      if (u.pathname.startsWith('/shorts/')) {
+        const id = u.pathname.split('/')[2];
+        return id ? `https://www.youtube.com/embed/${id}` : url;
+      }
+    }
+  } catch {
+    return url;
+  }
+
+  return url;
+}
+
+function getKnownEmbeddingBlockReason(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+
+    if (host === 'google.com' || host.endsWith('.google.com')) {
+      return 'Google pages block iframe embedding via security headers.';
+    }
+    if (host === 'youtube.com' || host.endsWith('.youtube.com')) {
+      if (!u.pathname.startsWith('/embed/')) {
+        return 'Most YouTube pages block iframes. Use a specific video URL to preview via embed.';
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function looksLikeBlockedIframe(iframe, targetUrl) {
+  try {
+    const href = iframe.contentWindow?.location?.href || '';
+    return href === 'about:blank' && targetUrl !== 'about:blank';
+  } catch {
+    return false;
+  }
+}
+
+function showFrameBlockedOverlay(url, reason) {
+  hideFrameBlockedOverlay();
+  const overlay = document.createElement('div');
+  overlay.id = 'frame-blocked-overlay';
+  overlay.className = 'frame-blocked-overlay';
+  overlay.innerHTML = `
+    <div class="frame-blocked-card">
+      <h3>Embedding blocked</h3>
+      <p>${escapeHtml(reason || 'This site prevents rendering inside iframes (X-Frame-Options/CSP).')}</p>
+      <div class="frame-blocked-actions">
+        <button type="button" class="frame-blocked-btn frame-blocked-btn-primary" id="blocked-open-tab">Open in new tab</button>
+        <button type="button" class="frame-blocked-btn" id="blocked-copy-url">Copy URL</button>
+      </div>
+    </div>
+  `;
+  const openBtn = overlay.querySelector('#blocked-open-tab');
+  const copyBtn = overlay.querySelector('#blocked-copy-url');
+  openBtn.addEventListener('click', () => window.open(url, '_blank', 'noopener,noreferrer'));
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast('success', 'URL copied!');
+    } catch {
+      toast('error', 'Copy failed.');
+    }
+  });
+  P.frameInner.appendChild(overlay);
+}
+
+function hideFrameBlockedOverlay() {
+  const existing = document.getElementById('frame-blocked-overlay');
+  if (existing) existing.remove();
 }
 
 /* ── Toast Notifications ──────────────────────────────── */

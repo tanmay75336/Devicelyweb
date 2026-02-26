@@ -648,6 +648,56 @@ input { font-family: inherit; }
   animation: spin 0.8s linear infinite;
 }
 
+.frame-blocked-overlay {
+  position: absolute; inset: 0; z-index: 12;
+  background: rgba(10,10,10,0.94);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.frame-blocked-card {
+  width: min(520px, 100%);
+  background: var(--bg-3);
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  padding: 18px;
+  text-align: left;
+}
+.frame-blocked-card h3 {
+  font-family: var(--font);
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+.frame-blocked-card p {
+  font-size: 12.5px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.frame-blocked-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.frame-blocked-btn {
+  border: 1px solid var(--border-2);
+  background: var(--bg-2);
+  color: var(--text-2);
+  border-radius: 7px;
+  padding: 8px 11px;
+  font-size: 12px;
+  font-family: var(--font);
+  font-weight: 600;
+}
+.frame-blocked-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.frame-blocked-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0a0a0a;
+}
+
 /* No URL state */
 .no-url-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -700,6 +750,45 @@ input { font-family: inherit; }
   padding: 3px 8px; border-radius: 20px;
   background: rgba(62,207,142,0.15); border: 1px solid rgba(62,207,142,0.3);
   color: var(--accent);
+}
+.mvp-fail-badge {
+  position: absolute; bottom: 8px; right: 8px;
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; font-family: var(--font);
+  padding: 3px 8px; border-radius: 20px;
+  background: rgba(230,57,70,0.12);
+  border: 1px solid rgba(230,57,70,0.35);
+  color: #ff8b93;
+}
+.mvp-blocked-overlay {
+  position: absolute; inset: 0; z-index: 4;
+  background: rgba(10,10,10,0.92);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 12px;
+}
+.mvp-blocked-title {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font);
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.mvp-blocked-text {
+  font-size: 10px;
+  color: var(--text-2);
+  line-height: 1.35;
+  margin-bottom: 10px;
+}
+.mvp-blocked-btn {
+  border: 1px solid var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-family: var(--font);
+  font-weight: 700;
 }
 
 /* Status bar */
