@@ -629,9 +629,12 @@ function showMultiViewport() {
     .map(id => VIEWPORT_PRESETS.find(v => v.id === id))
     .filter(Boolean);
 
-  // Calculate a good scale for multi-view panels
-  const canvasW = P.canvas.clientWidth - 80;
-  const maxPanelW = Math.min(380, canvasW / Math.min(vps.length, 3) - 32);
+  // Calculate a responsive panel width and columns for multi-view mode.
+  const safeCanvasW = Math.max(P.canvas.clientWidth - 32, 220);
+  const maxColumns = safeCanvasW < 760 ? 1 : safeCanvasW < 1160 ? 2 : 3;
+  const columns = Math.max(1, Math.min(vps.length, maxColumns));
+  const gap = 24;
+  const maxPanelW = Math.min(380, Math.max(180, (safeCanvasW - gap * (columns - 1)) / columns));
 
   vps.forEach(vp => {
     const scale = maxPanelW / vp.w;
@@ -731,7 +734,8 @@ function autoZoom() {
   if (previewState.selectedVPs.length > 1) return; // multi layout handles its own scale
   const vp = VIEWPORT_PRESETS.find(v => v.id === previewState.currentVP);
   if (!vp) return;
-  const padW = 80, padH = 140;
+  const padW = P.canvas.clientWidth < 768 ? 24 : 80;
+  const padH = P.canvas.clientHeight < 700 ? 96 : 140;
   const availW = P.canvas.clientWidth - padW;
   const availH = P.canvas.clientHeight - padH;
   const z = Math.min(availW / vp.w, availH / vp.h, 1.0);
