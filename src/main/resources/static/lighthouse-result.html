@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lighthouse Results | Devicely</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --card: #181818;
+      --border: #242424;
+      --muted: #9b9b9b;
+      --text: #ffffff;
+      --accent: #3ecf8e;
+      --good: #3ecf8e;
+      --avg: #fbbf24;
+      --poor: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "DM Sans", sans-serif;
+      padding: 24px;
+    }
+
+    .wrap {
+      width: min(980px, 100%);
+      margin: 0 auto;
+    }
+
+    .top {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .link {
+      display: inline-block;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .chip {
+      color: var(--accent);
+      border: 1px solid rgba(62, 207, 142, 0.35);
+      background: rgba(62, 207, 142, 0.08);
+      border-radius: 999px;
+      font-size: 12px;
+      padding: 5px 10px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-family: "Sora", sans-serif;
+      font-size: clamp(24px, 4vw, 38px);
+      line-height: 1.1;
+    }
+
+    .url {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      word-break: break-all;
+    }
+
+    .loader {
+      display: grid;
+      place-items: center;
+      gap: 10px;
+      padding: 36px 10px;
+      color: var(--muted);
+    }
+
+    .spinner {
+      width: 34px;
+      height: 34px;
+      border: 3px solid #2b2b2b;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .score-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .score-head {
+      font-family: "Sora", sans-serif;
+      font-size: 14px;
+      margin: 0 0 14px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      background: #131313;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 0 0 7px;
+    }
+
+    .score {
+      margin: 0;
+      font-size: 24px;
+      font-family: "Sora", sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .good { color: var(--good); }
+    .avg { color: var(--avg); }
+    .poor { color: var(--poor); }
+
+    .summary {
+      margin-top: 12px;
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .error {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #f87171;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 13px;
+      display: none;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="top">
+      <a class="link" id="back-link" href="lighthouse.html">&larr; Change URL</a>
+      <span class="chip" id="status-chip">Idle</span>
+    </div>
+
+    <section class="card">
+      <h1>Lighthouse Audit Results</h1>
+      <p id="target-url" class="url"></p>
+      <div id="loader" class="loader">
+        <div class="spinner" aria-hidden="true"></div>
+        <div>Running audit...</div>
+      </div>
+
+      <div id="results" style="display:none;">
+        <div class="grid">
+          <article class="score-card">
+            <p class="score-head">Mobile</p>
+            <div class="metrics">
+              <div class="metric"><p class="metric-label">Performance</p><p id="m-performance" class="score">-</p></div>
+              <div class="metric"><p class="metric-label">Accessibility</p><p id="m-accessibility" class="score">-</p></div>
+              <div class="metric"><p class="metric-label">SEO</p><p id="m-seo" class="score">-</p></div>
+              <div class="metric"><p class="metric-label">Best Practices</p><p id="m-best-practices" class="score">-</p></div>
+            </div>
+          </article>
+          <article class="score-card">
+            <p class="score-head">Desktop</p>
+            <div class="metrics">
+              <div class="metric"><p class="metric-label">Performance</p><p id="d-performance" class="score">-</p></div>
+              <div class="metric"><p class="metric-label">Accessibility</p><p id="d-accessibility" class="score">-</p></div>
+              <div class="metric"><p class="metric-label">SEO</p><p id="d-seo" class="score">-</p></div>
+              <div class="metric"><p class="metric-label">Best Practices</p><p id="d-best-practices" class="score">-</p></div>
+            </div>
+          </article>
+        </div>
+        <p class="summary" id="summary-text"></p>
+      </div>
+
+      <div id="error-box" class="error"></div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      const url = params.get("url");
+      const auditEndpoints = ["https://devicely-audit.onrender.com/audit"];
+
+      const targetUrlEl = document.getElementById("target-url");
+      const statusChipEl = document.getElementById("status-chip");
+      const loaderEl = document.getElementById("loader");
+      const resultsEl = document.getElementById("results");
+      const errorEl = document.getElementById("error-box");
+      const backLinkEl = document.getElementById("back-link");
+      const summaryEl = document.getElementById("summary-text");
+
+      function classForScore(score) {
+        if (score >= 90) return "good";
+        if (score >= 50) return "avg";
+        return "poor";
+      }
+
+      function setScore(id, score) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = score;
+        el.className = "score " + classForScore(score);
+      }
+
+      function showError(message) {
+        loaderEl.style.display = "none";
+        statusChipEl.textContent = "Error";
+        statusChipEl.style.borderColor = "rgba(239,68,68,0.4)";
+        statusChipEl.style.color = "#f87171";
+        statusChipEl.style.background = "rgba(239,68,68,0.08)";
+        errorEl.style.display = "block";
+        errorEl.textContent = message;
+      }
+
+      function roundScore(value) {
+        return value == null ? 0 : Math.round(value);
+      }
+
+      function normalizeAuditPayload(payload) {
+        if (!payload || !payload.mobile || !payload.desktop) {
+          throw new Error("Audit API response is missing mobile/desktop scores.");
+        }
+
+        return {
+          mobile: {
+            performance: roundScore(payload.mobile.performance),
+            accessibility: roundScore(payload.mobile.accessibility),
+            seo: roundScore(payload.mobile.seo),
+            bestPractices: roundScore(payload.mobile.bestPractices)
+          },
+          desktop: {
+            performance: roundScore(payload.desktop.performance),
+            accessibility: roundScore(payload.desktop.accessibility),
+            seo: roundScore(payload.desktop.seo),
+            bestPractices: roundScore(payload.desktop.bestPractices)
+          }
+        };
+      }
+
+      async function fetchDeployedAudit(targetUrl) {
+        let lastError = "Audit request failed.";
+
+        for (let i = 0; i < auditEndpoints.length; i += 1) {
+          const endpoint = auditEndpoints[i];
+          try {
+            const res = await fetch(endpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ url: targetUrl })
+            });
+
+            const data = await res.json().catch(function () { return null; });
+            if (!res.ok) {
+              lastError = (data && data.error ? data.error : ("Audit API returned " + res.status + ".")) + " Endpoint: " + endpoint + ".";
+              continue;
+            }
+
+            return normalizeAuditPayload(data);
+          } catch (e) {
+            lastError = (e && e.message ? e.message : "Network error") + " Endpoint: " + endpoint + ".";
+          }
+        }
+
+        throw new Error(lastError);
+      }
+
+      if (!url) {
+        showError("No URL found. Go back and enter a URL first.");
+        return;
+      }
+
+      let normalizedUrl = url.trim();
+      if (!/^https?:\/\//i.test(normalizedUrl)) {
+        normalizedUrl = "https://" + normalizedUrl;
+      }
+
+      try {
+        new URL(normalizedUrl);
+      } catch (_) {
+        showError("Invalid URL. Go back and enter a valid URL.");
+        return;
+      }
+
+      targetUrlEl.textContent = normalizedUrl;
+      backLinkEl.href = "lighthouse.html?url=" + encodeURIComponent(normalizedUrl);
+      statusChipEl.textContent = "Running";
+
+      fetchDeployedAudit(normalizedUrl).then(function (result) {
+        const mobile = result.mobile;
+        const desktop = result.desktop;
+
+        setScore("m-performance", mobile.performance);
+        setScore("m-accessibility", mobile.accessibility);
+        setScore("m-seo", mobile.seo);
+        setScore("m-best-practices", mobile.bestPractices);
+
+        setScore("d-performance", desktop.performance);
+        setScore("d-accessibility", desktop.accessibility);
+        setScore("d-seo", desktop.seo);
+        setScore("d-best-practices", desktop.bestPractices);
+
+        const avgPerf = Math.round((mobile.performance + desktop.performance) / 2);
+        summaryEl.textContent = "Audit complete - Average Performance: " + avgPerf + " (Source: Render audit API)";
+
+        loaderEl.style.display = "none";
+        resultsEl.style.display = "block";
+        statusChipEl.textContent = "Complete";
+      }).catch(function (err) {
+        const primaryMessage = err && err.message ? err.message : "Audit API failed.";
+        showError(primaryMessage);
+      });
+    })();
+  </script>
+</body>
+</html>

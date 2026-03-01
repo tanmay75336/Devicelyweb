@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lighthouse Audit Check | Devicely</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --card: #181818;
+      --border: #242424;
+      --muted: #9b9b9b;
+      --text: #ffffff;
+      --accent: #3ecf8e;
+      --accent-d: #2db87a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "DM Sans", sans-serif;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .wrap {
+      width: min(780px, 100%);
+    }
+
+    .back {
+      display: inline-block;
+      color: var(--muted);
+      text-decoration: none;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+    }
+
+    h1 {
+      font-family: "Sora", sans-serif;
+      font-size: clamp(28px, 4vw, 42px);
+      margin: 0 0 10px;
+      line-height: 1.1;
+    }
+
+    p {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    form {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .url-wrap {
+      flex: 1;
+      min-width: 240px;
+      display: flex;
+      align-items: center;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .protocol {
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 0 0 0 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      white-space: nowrap;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      color: var(--text);
+      background: transparent;
+      border: none;
+      padding: 12px 12px 12px 6px;
+      outline: none;
+      font-size: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+
+    .url-wrap:focus-within {
+      border-color: rgba(62, 207, 142, 0.5);
+    }
+
+    button {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: "Sora", sans-serif;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: var(--accent-d);
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .error {
+      margin-top: 12px;
+      color: #f87171;
+      font-size: 13px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <a class="back" href="index.html">&larr; Back to Home</a>
+    <section class="card">
+      <h1>Lighthouse Audit Check</h1>
+      <p>Paste any URL and continue to the results page for mobile and desktop performance, accessibility, SEO, and best-practices scores.</p>
+
+      <form id="audit-form">
+        <div class="url-wrap">
+          <span class="protocol">https://</span>
+          <input id="audit-url" type="text" placeholder="your-site.com" required />
+        </div>
+        <button type="submit">Run Audit</button>
+      </form>
+
+      <div id="form-error" class="error"></div>
+      <div class="hint">Enter any website URL to run Lighthouse mobile and desktop audits.</div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const form = document.getElementById("audit-form");
+      const input = document.getElementById("audit-url");
+      const errorEl = document.getElementById("form-error");
+
+      const params = new URLSearchParams(window.location.search);
+      const prefill = params.get("url");
+      if (prefill) {
+        input.value = prefill;
+      }
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        errorEl.style.display = "none";
+        errorEl.textContent = "";
+
+        let raw = input.value.trim();
+        if (!raw) {
+          errorEl.textContent = "Please enter a URL.";
+          errorEl.style.display = "block";
+          return;
+        }
+
+        const url = /^https?:\/\//i.test(raw) ? raw : "https://" + raw;
+
+        try {
+          new URL(url);
+        } catch (_) {
+          errorEl.textContent = "Please enter a valid URL (example: https://example.com).";
+          errorEl.style.display = "block";
+          return;
+        }
+
+        window.location.href = "lighthouse-result.html?url=" + encodeURIComponent(url);
+      });
+    })();
+  </script>
+</body>
+</html>
