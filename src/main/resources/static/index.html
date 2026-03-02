@@ -1708,7 +1708,9 @@
       el.textContent = (score !== null && score !== undefined) ? score : '-';
     }
 
-    const renderAuditEndpoints = ['/api/audit', 'https://devicely-audit.onrender.com/audit'];
+    const AUDIT_ENDPOINT = 'https://devicely-audit.onrender.com/audit';
+    const COLD_START_HINT_MS = 7000;
+    const REQUEST_TIMEOUT_MS = 120000;
 
     function normalizeAuditResponse(data) {
       if (!data || !data.mobile || !data.desktop) {
@@ -1732,31 +1734,72 @@
       };
     }
 
-    async function fetchAudit(url) {
-      let lastError = 'Audit request failed.';
-
-      for (let i = 0; i < renderAuditEndpoints.length; i += 1) {
-        const endpoint = renderAuditEndpoints[i];
-        try {
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url }),
-          });
-
-          const data = await res.json().catch(() => null);
-          if (!res.ok) {
-            lastError = `${data?.error || `Audit API error ${res.status}`}. Endpoint: ${endpoint}`;
-            continue;
-          }
-
-          return normalizeAuditResponse(data);
-        } catch (e) {
-          lastError = `${e?.message || 'Network error'}. Endpoint: ${endpoint}`;
-        }
+    async function safeReadJson(response) {
+      const text = await response.text();
+      if (!text) return null;
+      try {
+        return JSON.parse(text);
+      } catch (parseErr) {
+        console.error('Audit API returned invalid JSON:', {
+          endpoint: AUDIT_ENDPOINT,
+          status: response.status,
+          bodyPreview: text.slice(0, 500),
+          parseError: parseErr?.message || parseErr
+        });
+        return null;
       }
+    }
 
-      throw new Error(lastError);
+    async function fetchAudit(url) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        const res = await fetch(AUDIT_ENDPOINT, {
+          method: 'POST',
+          mode: 'cors',
+          credentials: 'omit',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+          signal: controller.signal,
+        });
+
+        const data = await safeReadJson(res);
+        if (!res.ok) {
+          const message = data?.error || `Audit API error ${res.status} ${res.statusText}`;
+          console.error('Audit API returned non-200 response:', {
+            endpoint: AUDIT_ENDPOINT,
+            status: res.status,
+            statusText: res.statusText,
+            responseBody: data
+          });
+          throw new Error(message);
+        }
+
+        if (!data) {
+          console.error('Audit API returned empty response body.', {
+            endpoint: AUDIT_ENDPOINT,
+            status: res.status
+          });
+          throw new Error('Audit API returned an empty response.');
+        }
+
+        return normalizeAuditResponse(data);
+      } catch (e) {
+        if (e?.name === 'AbortError') {
+          console.error('Audit request timed out.', {
+            endpoint: AUDIT_ENDPOINT,
+            timeoutMs: REQUEST_TIMEOUT_MS
+          });
+          throw new Error('Audit request timed out while waiting for backend response.');
+        }
+        console.error('Network error while fetching audit.', {
+          endpoint: AUDIT_ENDPOINT,
+          message: e?.message || e
+        });
+        throw new Error(e?.message || 'Network error while calling audit API.');
+      } finally {
+        clearTimeout(timeoutId);
+      }
     }
 
     async function runLighthouseAudit() {
@@ -1786,6 +1829,10 @@
       badge.className = 'status-badge status-running';
       urlDisp.textContent = url;
       btn.disabled = true;
+
+      const coldStartHintId = setTimeout(() => {
+        loaderTxt.textContent = 'Render service is waking up (cold start). This can take up to a minute...';
+      }, COLD_START_HINT_MS);
 
       try {
         loaderTxt.textContent = 'Fetching audit scores from Render...';
@@ -1820,6 +1867,7 @@
         badge.textContent = 'Error';
         badge.className = 'status-badge status-error';
       } finally {
+        clearTimeout(coldStartHintId);
         btn.disabled = false;
       }
     }
