@@ -223,10 +223,9 @@
     (function () {
       const params = new URLSearchParams(window.location.search);
       const url = params.get("url");
-      const auditEndpoints = [
-        "/api/audit",
-        "https://devicely-audit.onrender.com/audit"
-      ];
+      const AUDIT_ENDPOINT = "https://devicely-audit.onrender.com/audit";
+      const COLD_START_HINT_MS = 7000;
+      const REQUEST_TIMEOUT_MS = 120000;
 
       const targetUrlEl = document.getElementById("target-url");
       const statusChipEl = document.getElementById("status-chip");
@@ -284,31 +283,90 @@
         };
       }
 
-      async function fetchDeployedAudit(targetUrl) {
-        let lastError = "Audit request failed.";
+      async function safeReadJson(response) {
+        const text = await response.text();
+        if (!text) return null;
+        try {
+          return JSON.parse(text);
+        } catch (parseError) {
+          console.error("Audit API returned non-JSON response:", {
+            endpoint: AUDIT_ENDPOINT,
+            status: response.status,
+            bodyPreview: text.slice(0, 500),
+            parseError: parseError && parseError.message ? parseError.message : parseError
+          });
+          return null;
+        }
+      }
 
-        for (let i = 0; i < auditEndpoints.length; i += 1) {
-          const endpoint = auditEndpoints[i];
-          try {
-            const res = await fetch(endpoint, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ url: targetUrl })
+      async function fetchDeployedAudit(targetUrl) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(function () {
+          controller.abort();
+        }, REQUEST_TIMEOUT_MS);
+
+        let coldStartHintId = null;
+        coldStartHintId = setTimeout(function () {
+          statusChipEl.textContent = "Waking backend...";
+        }, COLD_START_HINT_MS);
+
+        try {
+          const response = await fetch(AUDIT_ENDPOINT, {
+            method: "POST",
+            mode: "cors",
+            credentials: "omit",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ url: targetUrl }),
+            signal: controller.signal
+          });
+
+          const data = await safeReadJson(response);
+
+          if (!response.ok) {
+            const errorMessage = data && data.error
+              ? data.error
+              : "Audit API returned " + response.status + " " + response.statusText + ".";
+
+            console.error("Audit request failed:", {
+              endpoint: AUDIT_ENDPOINT,
+              status: response.status,
+              statusText: response.statusText,
+              responseBody: data
             });
 
-            const data = await res.json().catch(function () { return null; });
-            if (!res.ok) {
-              lastError = (data && data.error ? data.error : ("Audit API returned " + res.status + ".")) + " Endpoint: " + endpoint + ".";
-              continue;
-            }
-
-            return normalizeAuditPayload(data);
-          } catch (e) {
-            lastError = (e && e.message ? e.message : "Network error") + " Endpoint: " + endpoint + ".";
+            throw new Error(errorMessage);
           }
-        }
 
-        throw new Error(lastError);
+          if (!data) {
+            console.error("Audit request succeeded but JSON body was empty.", {
+              endpoint: AUDIT_ENDPOINT,
+              status: response.status
+            });
+            throw new Error("Audit API returned an empty response.");
+          }
+
+          return normalizeAuditPayload(data);
+        } catch (error) {
+          if (error && error.name === "AbortError") {
+            console.error("Audit request timed out:", {
+              endpoint: AUDIT_ENDPOINT,
+              timeoutMs: REQUEST_TIMEOUT_MS
+            });
+            throw new Error("Audit request timed out while waiting for backend response.");
+          }
+
+          console.error("Network or fetch error while calling audit API:", {
+            endpoint: AUDIT_ENDPOINT,
+            message: error && error.message ? error.message : error
+          });
+
+          throw new Error(error && error.message ? error.message : "Network error while calling audit API.");
+        } finally {
+          clearTimeout(timeoutId);
+          if (coldStartHintId) clearTimeout(coldStartHintId);
+        }
       }
 
       if (!url) {
@@ -330,7 +388,7 @@
 
       targetUrlEl.textContent = normalizedUrl;
       backLinkEl.href = "lighthouse.html?url=" + encodeURIComponent(normalizedUrl);
-      statusChipEl.textContent = "Running";
+      statusChipEl.textContent = "Running...";
 
       fetchDeployedAudit(normalizedUrl).then(function (result) {
         const mobile = result.mobile;
