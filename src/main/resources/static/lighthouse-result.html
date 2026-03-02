@@ -223,7 +223,10 @@
     (function () {
       const params = new URLSearchParams(window.location.search);
       const url = params.get("url");
-      const auditEndpoints = ["https://devicely-audit.onrender.com/audit"];
+      const auditEndpoints = [
+        "/api/audit",
+        "https://devicely-audit.onrender.com/audit"
+      ];
 
       const targetUrlEl = document.getElementById("target-url");
       const statusChipEl = document.getElementById("status-chip");
@@ -344,7 +347,7 @@
         setScore("d-best-practices", desktop.bestPractices);
 
         const avgPerf = Math.round((mobile.performance + desktop.performance) / 2);
-        summaryEl.textContent = "Audit complete - Average Performance: " + avgPerf + " (Source: Render audit API)";
+        summaryEl.textContent = "Audit complete - Average Performance: " + avgPerf;
 
         loaderEl.style.display = "none";
         resultsEl.style.display = "block";

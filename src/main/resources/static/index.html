@@ -1708,7 +1708,7 @@
       el.textContent = (score !== null && score !== undefined) ? score : '-';
     }
 
-    const renderAuditEndpoints = ['https://devicely-audit.onrender.com/audit'];
+    const renderAuditEndpoints = ['/api/audit', 'https://devicely-audit.onrender.com/audit'];
 
     function normalizeAuditResponse(data) {
       if (!data || !data.mobile || !data.desktop) {
